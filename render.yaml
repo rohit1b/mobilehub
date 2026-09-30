@@ -1,0 +1,123 @@
+databases:
+  - name: mobilehub-db
+    plan: free
+envVarGroups:
+  - name: mobilehub-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INTERNAL_KEY
+        generateValue: true
+services:
+  - type: web
+    name: mobilehub-eureka-java
+    runtime: docker
+    rootDir: eureka-server-java
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: "8761"
+
+  - type: web
+    name: mobilehub-gateway-java
+    runtime: docker
+    rootDir: gateway-java
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: mobilehub-shared
+      - key: PORT
+        value: "8080"
+      - key: EUREKA_SERVER_URL
+        value: https://mobilehub-eureka-java.onrender.com/eureka/
+
+  - type: web
+    name: mobilehub-auth
+    runtime: node
+    rootDir: auth-service
+    buildCommand: npm install
+    startCommand: node index.js
+    plan: free
+    envVars:
+      - fromGroup: mobilehub-shared
+      - key: PORT
+        value: "4001"
+      - key: EUREKA_URL
+        value: https://mobilehub-eureka-java.onrender.com
+      - key: PGSSL
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mobilehub-db
+          property: connectionString
+
+  - type: web
+    name: mobilehub-product
+    runtime: node
+    rootDir: product-service
+    buildCommand: npm install
+    startCommand: node index.js
+    plan: free
+    envVars:
+      - fromGroup: mobilehub-shared
+      - key: PORT
+        value: "4002"
+      - key: EUREKA_URL
+        value: https://mobilehub-eureka-java.onrender.com
+      - key: SELF_URL
+        value: https://mobilehub-product.onrender.com
+      - key: PGSSL
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mobilehub-db
+          property: connectionString
+
+  - type: web
+    name: mobilehub-cart
+    runtime: node
+    rootDir: cart-service
+    buildCommand: npm install
+    startCommand: node index.js
+    plan: free
+    envVars:
+      - fromGroup: mobilehub-shared
+      - key: PORT
+        value: "4004"
+      - key: EUREKA_URL
+        value: https://mobilehub-eureka-java.onrender.com
+      - key: SELF_URL
+        value: https://mobilehub-cart.onrender.com
+      - key: PGSSL
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mobilehub-db
+          property: connectionString
+      - key: PRODUCT_URL
+        value: https://mobilehub-product.onrender.com
+
+  - type: web
+    name: mobilehub-order
+    runtime: node
+    rootDir: order-service
+    buildCommand: npm install
+    startCommand: node index.js
+    plan: free
+    envVars:
+      - fromGroup: mobilehub-shared
+      - key: PORT
+        value: "4003"
+      - key: EUREKA_URL
+        value: https://mobilehub-eureka-java.onrender.com
+      - key: PGSSL
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mobilehub-db
+          property: connectionString
+      - key: PRODUCT_URL
+        value: https://mobilehub-product.onrender.com
+      - key: CART_URL
+        value: https://mobilehub-cart.onrender.com

@@ -1,0 +1,1 @@
+{"name":"mobilehub","version":"1.0.0","scripts":{"setup":"node setup.js","start":"node start-all.js"}}

@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres }
+    volumes: ["./db/init.sql:/docker-entrypoint-initdb.d/init.sql", "pgdata:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres"], interval: 3s, retries: 20 }
+
+  eureka-server:
+    build: ./eureka-server-java
+    ports: ["8761:8761"]
+
+  auth-service:
+    build: ./auth-service
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/auth_db"
+      EUREKA_URL: "http://eureka-server:8761"
+      SELF_URL: "http://auth-service:4001"
+      JWT_SECRET: "mobilehub-super-secret-jwt-signing-key-2026"
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  product-service:
+    build: ./product-service
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/product_db"
+      EUREKA_URL: "http://eureka-server:8761"
+      SELF_URL: "http://product-service:4002"
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  cart-service:
+    build: ./cart-service
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/cart_db"
+      EUREKA_URL: "http://eureka-server:8761"
+      SELF_URL: "http://cart-service:4004"
+      PRODUCT_URL: "http://product-service:4002"
+      JWT_SECRET: "mobilehub-super-secret-jwt-signing-key-2026"
+    depends_on:
+      postgres: { condition: service_healthy }
+      product-service: { condition: service_started }
+
+  order-service:
+    build: ./order-service
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/order_db"
+      EUREKA_URL: "http://eureka-server:8761"
+      SELF_URL: "http://order-service:4003"
+      PRODUCT_URL: "http://product-service:4002"
+      CART_URL: "http://cart-service:4004"
+      JWT_SECRET: "mobilehub-super-secret-jwt-signing-key-2026"
+    depends_on:
+      postgres: { condition: service_healthy }
+      product-service: { condition: service_started }
+      cart-service: { condition: service_started }
+
+  gateway:
+    build: ./gateway-java
+    ports: ["8080:8080"]
+    environment:
+      EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+      JWT_SECRET: "mobilehub-super-secret-jwt-signing-key-2026"
+    depends_on:
+      - eureka-server
+      - auth-service
+      - product-service
+      - cart-service
+      - order-service
+
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    environment: { GATEWAY_URL: "http://gateway:8080" }
+    depends_on: [gateway]
+
+volumes: { pgdata: {} }

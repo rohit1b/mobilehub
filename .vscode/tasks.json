@@ -1,0 +1,3 @@
+{"version":"2.0.0","tasks":[
+ {"label":"MobileHub: Setup (install + create DBs)","type":"shell","command":"npm run setup","problemMatcher":[]},
+ {"label":"MobileHub: Start all","type":"shell","command":"npm start","problemMatcher":[],"isBackground":true}]}
